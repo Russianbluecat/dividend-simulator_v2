@@ -181,9 +181,11 @@ if run_simulation:
         if dividend_stock == invest_stock:
             st.info(f"🔄 **동일 종목 재투자**: {dividend_stock} 배당금 → {dividend_stock} 재투자")
         else:
-            # 동일 통화 투자 시 통화 명시적으로 표시
-            currency_name = "원화" if dividend_currency == "KRW" else "달러"
-            st.info(f"💰 **동일 통화 투자**: {dividend_symbol} {currency_name} 배당금 → {result_symbol} {currency_name} 투자")
+            # 동일 통화 투자 시 명확한 표시
+            if dividend_currency == "KRW":
+                st.info(f"💰 **동일 통화 투자**: ₩ 원화 배당금 → ₩ 원화 투자")
+            else:  # USD
+                st.info(f"💰 **동일 통화 투자**: $ 달러 배당금 → $ 달러 투자")
     
     # 프로그레스 바
     progress_bar = st.progress(0)
