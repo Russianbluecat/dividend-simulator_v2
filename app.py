@@ -220,9 +220,9 @@ def create_ui_components():
 
 # 상수에 UI 데이터 추가
 TICKER_EXAMPLES = {
-    "미국주식/ETF": "JEPQ, SCHD, AAPL, MSFT",
-    "한국주식": "005930.KS (삼성전자), 000660.KS (SK하이닉스)",
-    "한국 ETF": "284430.KS (KODEX 200)"
+    "미국주식/ETF":<br> "JEPQ, SCHD, AAPL, MSFT",
+    "한국주식":<br> "005930.KS (삼성전자), 000660.KS (SK하이닉스)"
+    
 }
 
 EXAMPLE_RESULT = {
