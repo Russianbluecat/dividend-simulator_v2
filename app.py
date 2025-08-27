@@ -86,7 +86,7 @@ with col_button[1]:
     run_simulation = st.button("🚀 시뮬레이션 실행", type="primary", use_container_width=True)
 
 # 헬퍼 함수 정의
-@st.cache_data(ttl=3600)
+@st.cache_resource
 def get_stock_info(ticker_symbol):
     try:
         stock_ticker = yf.Ticker(ticker_symbol)
@@ -146,8 +146,8 @@ if run_simulation:
         status_text.text("💰 배당 내역을 가져오는 중...")
         progress_bar.progress(30)
         dividends = jepq_ticker.dividends
-        start_datetime = pd.Timestamp(start_date, tz='UTC') # UTC 시간대로 통일
-        recent_dividends = dividends[dividends >= start_datetime]
+        start_datetime = pd.Timestamp(start_date, tz='UTC')
+        recent_dividends = dividends[dividends.index.tz_localize('UTC') >= start_datetime]
         
         if recent_dividends.empty:
             st.warning(f"⚠️ {start_date} 이후 {dividend_stock}의 배당 내역이 없습니다.")
@@ -162,9 +162,8 @@ if run_simulation:
         investments = []
         
         for dividend_date_utc, dividend_per_share in recent_dividends.items():
-            dividend_date_local = dividend_date_utc.tz_convert(None) # UTC -> Naive
+            dividend_date_local = dividend_date_utc.tz_convert(None)
             
-            # 투자 대상 주식의 해당일 주가 가져오기
             invest_data = invest_ticker.history(start=dividend_date_local.strftime('%Y-%m-%d'), period='5d')
             if invest_data.empty:
                 st.warning(f"⚠️ {dividend_date_local.strftime('%Y-%m-%d')} {invest_stock}의 주가 데이터를 찾을 수 없어 해당 배당금은 계산에서 제외됩니다.")
@@ -173,7 +172,6 @@ if run_simulation:
             invest_close_price = invest_data['Close'].iloc[0]
             actual_trade_date = invest_data.index[0].tz_convert(None)
 
-            # 통화 변환
             total_dividend = dividend_per_share * shares_count
             converted_amount = total_dividend
             exchange_rate = 1.0
@@ -299,7 +297,7 @@ if run_simulation:
 
         # 상세 투자 내역 테이블
         st.subheader("📋 상세 투자 내역")
-        display_df = df_investments.copy()
+        display_df = pd.DataFrame(investments)
         display_df['배당일'] = display_df['dividend_date']
         display_df['거래일'] = display_df['trade_date']
         display_df['주당배당금'] = display_df['dividend_per_share'].apply(lambda x: f"${x:.4f}" if dividend_currency == 'USD' else f"₩{x:,.0f}")
@@ -317,7 +315,7 @@ if run_simulation:
         st.dataframe(display_df[columns], use_container_width=True)
 
         # 다운로드 버튼
-        csv = df_investments.to_csv(index=False)
+        csv = display_df.to_csv(index=False)
         st.download_button(
             label="📥 투자 내역 CSV 다운로드",
             data=csv,
