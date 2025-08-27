@@ -54,6 +54,7 @@ st.sidebar.markdown("""
 # 메인 화면에 입력 파라미터
 st.subheader("📊 투자 설정")
 
+st.markdown("---")
 # 입력 폼을 2x2 그리드로 메인 화면에 배치
 col1, col2 = st.columns(2)
 
