@@ -218,39 +218,68 @@ def create_ui_components():
 
     return dividend_stock, invest_stock, start_date, shares_count
 
+# 상수에 UI 데이터 추가
+TICKER_EXAMPLES = {
+    "미국주식/ETF": "JEPQ, SCHD, AAPL, MSFT",
+    "한국주식": "005930.KS (삼성전자), 000660.KS (SK하이닉스)",
+    "한국 ETF": "284430.KS (KODEX 200)"
+}
+
+EXAMPLE_RESULT = {
+    "stock_combo": "JEPQ 1000주 → AMZN 재투자",
+    "period": "2025.01.01~08.27 기준",
+    "dividend_count": "7회 배당 ($3,630)",
+    "shares_owned": "AMZN 17.5주 보유",
+    "return_rate": "+10.01% 수익률"
+}
+
+def create_info_box(content: str, bg_color: str = "#e3f2fd", border_color: str = "#1976d2") -> str:
+    """정보 박스 HTML 생성"""
+    return f"""
+    <div style="background-color: {bg_color}; padding: 15px; border-radius: 8px; 
+                border-left: 4px solid {border_color}; margin: 10px 0;">
+        {content}
+    </div>
+    """
+
 def create_sidebar():
     """사이드바 생성"""
     st.sidebar.header("🎯 예시 결과")
-    st.sidebar.markdown("""
-    **JEPQ 1000주 → AMZN 재투자**
-    (2025.01.01~08.27 기준)
+    st.sidebar.markdown(f"""
+    **{EXAMPLE_RESULT['stock_combo']}**
+    ({EXAMPLE_RESULT['period']})
 
-    - 📊 7회 배당 ($3,630)  
-    - 💎 AMZN 17.5주 보유  
-    - 📈 +10.01% 수익률
+    - 📊 {EXAMPLE_RESULT['dividend_count']}  
+    - 💎 {EXAMPLE_RESULT['shares_owned']}  
+    - 📈 {EXAMPLE_RESULT['return_rate']}
     """)
     
     st.sidebar.markdown("---")
-    st.sidebar.header("📝 티커 예시")
-    st.sidebar.markdown("""
-    **미국주식:**
-
-    JEPQ, SCHD, AAPL, MSFT
-
-    **한국주식:**
-
-    005930.KS (삼성전자),  
-    000660.KS (하이닉스)
-
-    """)
-
-    st.sidebar.markdown("---")
-    st.sidebar.header("📝 환율 기준")
-    st.sidebar.markdown("""
-    **Yahoo Finance 기준**
-
-    """)
+    st.sidebar.header("💡 사용 가이드")
     
+    # 티커 예시를 동적으로 생성
+    ticker_content = '<h4 style="color: #1565c0; margin-top: 0; font-size: 16px;">📝 티커 입력 예시:</h4>'
+    ticker_content += '<div style="color: #424242; line-height: 1.6;">'
+    
+    for category, examples in TICKER_EXAMPLES.items():
+        ticker_content += f'<strong>• {category}:</strong> {examples}<br>'
+    
+    ticker_content += '</div>'
+    
+    st.sidebar.markdown(
+        create_info_box(ticker_content), 
+        unsafe_allow_html=True
+    )
+    
+    st.sidebar.markdown("---")
+    st.sidebar.header("📊 환율 기준")
+    
+    # 환율 정보 박스
+    exchange_content = '<div style="color: #4a148c; font-weight: 500;">📈 Yahoo Finance 실시간 환율 적용</div>'
+    st.sidebar.markdown(
+        create_info_box(exchange_content, "#f3e5f5", "#7b1fa2"), 
+        unsafe_allow_html=True
+    )
 
 def display_results(results: Dict, investments: List[Dict], invest_stock: str, 
                    invest_currency: str, dividend_currency: str):
