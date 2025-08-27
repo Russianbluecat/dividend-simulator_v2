@@ -1,2 +1,3 @@
-# dividend-simulator_v2
-Dividend Reinvestment ( 배당금을 다른 주식에 투자하는 경우)
+# 📈 배당금 교차투자 시뮬레이터 (Dividend Reinvestment Simulator)
+
+**🔗 앱 실행 (Launch App):** [https://dividend-simulatorv2.streamlit.app/](https://dividend-simulatorv2.streamlit.app/)
