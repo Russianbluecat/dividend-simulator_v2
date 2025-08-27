@@ -308,9 +308,9 @@ if run_simulation:
             st.info(f"🔄 **동일 종목 재투자**: {dividend_stock} 배당금 → {dividend_stock} 재투자")
         else:
             if dividend_currency == "KRW":
-                st.info(f"💰 **동일 통화 투자**: KRW 배당금 → KRW 투자")
+                st.info(f"💰 **동일 통화 투자**: ₩ 원화 배당금 → ₩ 원화 투자")
             else:
-                st.info(f"💰 **동일 통화 투자**: USD 배당금 → USD 투자")
+                st.info(f"💰 **동일 통화 투자**: $ 달러 배당금 → $ 달러 투자")
     
     # 프로그레스 바
     progress_bar = st.progress(0)
@@ -515,35 +515,6 @@ if run_simulation:
 else:
     # 초기 화면
     st.info("💡 **사용 방법**: 위의 투자 설정을 입력하고 시뮬레이션을 실행해보세요!")
-    
-    # 예시 시나리오들
-    st.subheader("🎯 추천 시나리오")
-    
-    scenario_col1, scenario_col2, scenario_col3 = st.columns(3)
-    
-    with scenario_col1:
-        st.info("""
-        **📊 고배당 ETF → 성장주**
-        - 배당주: JEPQ, SCHD, DIVO
-        - 투자 대상: AMZN, GOOGL, TSLA
-        - 특징: 안정적 배당 → 성장성
-        """)
-    
-    with scenario_col2:
-        st.info("""
-        **🔄 배당 재투자 (DRIP)**
-        - 배당주: 동일 종목
-        - 투자 대상: 동일 종목
-        - 특징: 복리효과 극대화
-        """)
-    
-    with scenario_col3:
-        st.info("""
-        **💱 환전 투자**
-        - 배당주: 미국 주식/ETF
-        - 투자 대상: 한국 주식
-        - 특징: 환율 변동 영향 고려
-        """)
 
 # 푸터
 st.markdown("---")
