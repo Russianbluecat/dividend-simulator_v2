@@ -183,9 +183,9 @@ if run_simulation:
         else:
             # 동일 통화 투자 시 명확한 표시
             if dividend_currency == "KRW":
-                st.info(f"💰 **동일 통화 투자**: ₩ 원화 배당금 → ₩ 원화 투자")
+                st.info(f"💰 **동일 통화 투자**:₩ 원화 배당금 → ₩ 원화 투자")
             else:  # USD
-                st.info(f"💰 **동일 통화 투자**: $ 달러 배당금 → $ 달러 투자")
+                st.info(f"💰 **동일 통화 투자**:$ 달러 배당금 → $ 달러 투자")
     
     # 프로그레스 바
     progress_bar = st.progress(0)
