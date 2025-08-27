@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Curl to Streamlit app
-        run: curl -I -s https://dividend-reinvest-simul.streamlit.app/ > /dev/null
+        run: curl -I -s https://dividend-simulatorv2.streamlit.app/ > /dev/null
