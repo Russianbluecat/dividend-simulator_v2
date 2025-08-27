@@ -233,9 +233,17 @@ def create_sidebar():
     st.sidebar.markdown("---")
     st.sidebar.header("📝 티커 예시")
     st.sidebar.markdown("""
-    **미국주식:**  JEPQ, SCHD, AAPL, MSFT  
-    **한국주식:**  005930.KS, 000660.KS  
-    **한국주식 ETF:**  284430.KS, 132030.KS
+    **미국주식:**
+
+    JEPQ, SCHD, AAPL, MSFT
+
+    **한국주식:**
+
+    005930.KS, 000660.KS
+
+    **한국 ETF:**
+
+    284430.KS, 132030.KS
     """)
 
 def display_results(results: Dict, investments: List[Dict], invest_stock: str, 
