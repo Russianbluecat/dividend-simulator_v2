@@ -244,6 +244,14 @@ def create_sidebar():
 
     """)
 
+    st.sidebar.markdown("---")
+    st.sidebar.header("📝 환율 기준")
+    st.sidebar.markdown("""
+    **Yahoo Finance 기준**
+
+    """)
+    
+
 def display_results(results: Dict, investments: List[Dict], invest_stock: str, 
                    invest_currency: str, dividend_currency: str):
     """결과 표시"""
