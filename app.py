@@ -146,8 +146,7 @@ if run_simulation:
         status_text.text("💰 배당 내역을 가져오는 중...")
         progress_bar.progress(30)
         dividends = jepq_ticker.dividends
-        start_datetime = pd.Timestamp(start_date, tz='UTC')
-        recent_dividends = dividends[dividends.index.tz_localize('UTC') >= start_datetime]
+        recent_dividends = dividends[dividends.index.date >= start_date]
         
         if recent_dividends.empty:
             st.warning(f"⚠️ {start_date} 이후 {dividend_stock}의 배당 내역이 없습니다.")
@@ -325,7 +324,7 @@ if run_simulation:
             
     except Exception as e:
         st.error(f"❌ 오류가 발생했습니다: {e}")
-        st.info("티커 심볼이 올바른지 확인하고 다시 시도해주세요.")
+        st.info("티커 심볼이 올바른지, 날짜가 올바른지 확인하고 다시 시도해주세요.")
     finally:
         progress_bar.empty()
         status_text.empty()
