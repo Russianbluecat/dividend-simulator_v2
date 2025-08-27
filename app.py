@@ -500,8 +500,334 @@ if run_simulation:
                 delta=f"{profit_loss_pct:+.2f}%"
             )
         
-        # 차트 및 분석 섹션은 계속...
-        # (이후 차트, 테이블, 다운로드 기능 등은 동일)
+        # 차트 섹션
+        if dividend_stock == invest_stock:
+            st.subheader("📊 배당 재투자 현황 차트")
+        else:
+            st.subheader("📊 투자 현황 차트")
+        
+        # 투자 데이터 준비
+        df_investments = pd.DataFrame(investments)
+        
+        # 탭으로 차트 분리
+        tabs = ["📈 누적 주식 보유량", "📊 주가 비교"]
+        if dividend_stock == invest_stock:
+            tabs[0] = "📈 누적 재투자량"
+            tabs[1] = "📊 재투자 효과"
+        if dividend_currency != invest_currency:
+            tabs.append("💱 환율 변화")
+        
+        tab_objects = st.tabs(tabs)
+        
+        with tab_objects[0]:
+            fig_cumulative = go.Figure()
+            fig_cumulative.add_trace(go.Scatter(
+                x=df_investments['date'],
+                y=df_investments['cumulative_shares'],
+                mode='lines+markers',
+                name=f'누적 {invest_stock} 보유량',
+                line=dict(color='#1f77b4', width=3),
+                hovertemplate='<b>%{x}</b><br>보유량: %{y:.6f}주<extra></extra>'
+            ))
+            fig_cumulative.update_layout(
+                title=f"누적 {invest_stock} 주식 보유량 변화" if dividend_stock != invest_stock else f"{dividend_stock} 배당 재투자로 인한 보유량 증가",
+                xaxis_title="날짜",
+                yaxis_title="보유 주식 수",
+                hovermode='x unified',
+                showlegend=True
+            )
+            st.plotly_chart(fig_cumulative, use_container_width=True)
+        
+        with tab_objects[1]:
+            if dividend_stock == invest_stock:
+                # 같은 종목인 경우: 재투자 효과 차트
+                fig_reinvest = go.Figure()
+                
+                # 원래 보유량 (고정)
+                original_shares_line = [shares_count] * len(df_investments)
+                fig_reinvest.add_trace(go.Scatter(
+                    x=df_investments['date'],
+                    y=original_shares_line,
+                    mode='lines',
+                    name=f'원래 보유량 ({shares_count}주)',
+                    line=dict(color='red', width=2, dash='dash')
+                ))
+                
+                # 재투자로 늘어난 총 보유량
+                total_shares_line = [shares_count + cum_shares for cum_shares in df_investments['cumulative_shares']]
+                fig_reinvest.add_trace(go.Scatter(
+                    x=df_investments['date'],
+                    y=total_shares_line,
+                    mode='lines+markers',
+                    name='재투자 후 총 보유량',
+                    line=dict(color='green', width=3),
+                    hovertemplate='<b>%{x}</b><br>총 보유량: %{y:.6f}주<extra></extra>'
+                ))
+                
+                fig_reinvest.update_layout(
+                    title=f"{dividend_stock} 배당 재투자 효과",
+                    xaxis_title="날짜",
+                    yaxis_title="총 보유 주식 수",
+                    hovermode='x unified'
+                )
+                st.plotly_chart(fig_reinvest, use_container_width=True)
+                
+                # 재투자 효과 요약
+                final_total_shares = shares_count + total_shares_bought
+                reinvest_increase_pct = (total_shares_bought / shares_count) * 100
+                st.info(f"📈 **재투자 효과**: 원래 {shares_count}주 → 현재 {final_total_shares:.2f}주 (+{reinvest_increase_pct:.2f}% 증가)")
+                
+            else:
+                # 다른 종목인 경우: 주가 비교 차트
+                fig_price = go.Figure()
+                fig_price.add_trace(go.Scatter(
+                    x=df_investments['date'],
+                    y=df_investments['stock_price'],
+                    mode='lines+markers',
+                    name=f'{invest_stock} 매수가',
+                    line=dict(color='#ff7f0e', width=2),
+                    hovertemplate='<b>%{x}</b><br>매수가: %{customdata}<extra></extra>',
+                    customdata=[f"{result_symbol}{price:.2f}" for price in df_investments['stock_price']]
+                ))
+                fig_price.add_hline(
+                    y=average_price, 
+                    line_dash="dash", 
+                    line_color="red",
+                    annotation_text=f"평균단가: {result_symbol}{average_price:.2f}"
+                )
+                fig_price.add_hline(
+                    y=current_price, 
+                    line_dash="dash", 
+                    line_color="green",
+                    annotation_text=f"현재가: {result_symbol}{current_price:.2f}"
+                )
+                fig_price.update_layout(
+                    title=f"{invest_stock} 주가 변화 및 매수가 비교",
+                    xaxis_title="날짜",
+                    yaxis_title=f"주가 ({result_symbol})",
+                    hovermode='x unified'
+                )
+                st.plotly_chart(fig_price, use_container_width=True)
+        
+        # 환율 차트 (교차 투자인 경우에만 표시)
+        if len(tabs) > 2:  # 환율 탭이 있는 경우
+            with tab_objects[2]:
+                fig_exchange = go.Figure()
+                fig_exchange.add_trace(go.Scatter(
+                    x=df_investments['date'],
+                    y=df_investments['exchange_rate'],
+                    mode='lines+markers',
+                    name=f'{dividend_currency}/{invest_currency} 환율',
+                    line=dict(color='#2ca02c', width=2),
+                    hovertemplate='<b>%{x}</b><br>환율: %{y:.4f}<extra></extra>'
+                ))
+                
+                avg_rate = sum(df_investments['exchange_rate']) / len(df_investments)
+                fig_exchange.add_hline(
+                    y=avg_rate,
+                    line_dash="dash", 
+                    line_color="orange",
+                    annotation_text=f"평균 환율: {avg_rate:.4f}"
+                )
+                
+                fig_exchange.update_layout(
+                    title=f"{dividend_currency} → {invest_currency} 환율 변화",
+                    xaxis_title="날짜",
+                    yaxis_title="환율",
+                    hovermode='x unified'
+                )
+                st.plotly_chart(fig_exchange, use_container_width=True)
+        
+        # 상세 투자 내역 테이블
+        st.subheader("📋 상세 투자 내역")
+        
+        # 테이블 데이터 준비
+        display_df = df_investments.copy()
+        display_df['배당일'] = display_df['dividend_date']
+        display_df['거래일'] = display_df['trade_date']
+        display_df['주당배당금'] = display_df['dividend_per_share_original'].apply(
+            lambda x: f"{dividend_symbol}{x:.4f}"
+        )
+        
+        if dividend_currency != invest_currency:
+            display_df['환율'] = display_df['exchange_rate'].apply(lambda x: f"{x:.4f}")
+            display_df[f'배당금({dividend_currency})'] = display_df['total_dividend_original'].apply(
+                lambda x: f"{dividend_symbol}{x:,.2f}"
+            )
+            display_df[f'배당금({invest_currency})'] = display_df['total_dividend_converted'].apply(
+                lambda x: f"{result_symbol}{x:,.2f}"
+            )
+        else:
+            display_df['총배당금'] = display_df['total_dividend_converted'].apply(
+                lambda x: f"{result_symbol}{x:,.2f}"
+            )
+        
+        display_df['매수가'] = display_df['stock_price'].apply(
+            lambda x: f"{result_symbol}{x:,.2f}"
+        )
+        display_df['매수주식수'] = display_df['shares_bought'].apply(lambda x: f"{x:.6f}")
+        display_df['누적보유'] = display_df['cumulative_shares'].apply(lambda x: f"{x:.6f}")
+        
+        # 테이블 컬럼 선택
+        if dividend_currency != invest_currency:
+            table_columns = ['배당일', '거래일', '주당배당금', '환율', f'배당금({dividend_currency})', f'배당금({invest_currency})', '매수가', '매수주식수', '누적보유']
+        else:
+            table_columns = ['배당일', '거래일', '주당배당금', '총배당금', '매수가', '매수주식수', '누적보유']
+        
+        st.dataframe(
+            display_df[table_columns],
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # 추가 통계 정보
+        with st.expander("📊 상세 통계 정보"):
+            col_stat1, col_stat2, col_stat3 = st.columns(3)
+            
+            with col_stat1:
+                st.metric("평균 배당금", f"{result_symbol}{total_invested_amount/len(investments):,.2f}")
+                st.metric("최대 배당금", f"{result_symbol}{max(inv['total_dividend_converted'] for inv in investments):,.2f}")
+                st.metric("최소 배당금", f"{result_symbol}{min(inv['total_dividend_converted'] for inv in investments):,.2f}")
+            
+            with col_stat2:
+                st.metric("평균 매수가", f"{result_symbol}{average_price:,.2f}")
+                st.metric("최고 매수가", f"{result_symbol}{max(inv['stock_price'] for inv in investments):,.2f}")
+                st.metric("최저 매수가", f"{result_symbol}{min(inv['stock_price'] for inv in investments):,.2f}")
+            
+            with col_stat3:
+                investment_period_days = (max(df_investments['date']) - min(df_investments['date'])).days
+                st.metric("투자 기간", f"{investment_period_days}일")
+                st.metric("투자 빈도", f"{len(investments)}회")
+                if investment_period_days > 0:
+                    avg_frequency = investment_period_days / len(investments)
+                    st.metric("평균 투자 간격", f"{avg_frequency:.1f}일")
+        
+        # 다운로드 버튼들
+        st.markdown("---")
+        col_download1, col_download2 = st.columns(2)
+        
+        with col_download1:
+            # CSV 다운로드
+            csv = df_investments.to_csv(index=False)
+            st.download_button(
+                label="📥 투자 내역 CSV 다운로드",
+                data=csv,
+                file_name=f"{dividend_stock}_to_{invest_stock}_investment_history_{start_date}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col_download2:
+            # 요약 보고서 생성
+            summary_report = f"""
+배당금 교차투자 시뮬레이션 요약 보고서
+========================================
+
+시뮬레이션 설정:
+- 배당주: {dividend_stock} ({shares_count:,}주 보유)
+- 투자 대상: {invest_stock}
+- 시작일: {start_date}
+- 시뮬레이션 실행일: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+투자 결과:
+- 총 투자 횟수: {len(investments)}회
+- 총 투자금액: {result_symbol}{total_invested_amount:,.2f}
+- 현재 보유 주식: {total_shares_bought:.6f}주
+- 평균 매수가: {result_symbol}{average_price:.2f}
+- 현재 주가: {result_symbol}{current_price:.2f}
+- 현재 평가금액: {result_symbol}{current_value:,.2f}
+- 손익: {result_symbol}{profit_loss:,.2f} ({profit_loss_pct:+.2f}%)
+
+배당 정보:
+- 평균 배당금: {result_symbol}{total_invested_amount/len(investments):,.2f}
+- 최대 배당금: {result_symbol}{max(inv['total_dividend_converted'] for inv in investments):,.2f}
+- 최소 배당금: {result_symbol}{min(inv['total_dividend_converted'] for inv in investments):,.2f}
+
+주가 정보:
+- 최고 매수가: {result_symbol}{max(inv['stock_price'] for inv in investments):,.2f}
+- 최저 매수가: {result_symbol}{min(inv['stock_price'] for inv in investments):,.2f}
+- 가격 변동성: {((max(inv['stock_price'] for inv in investments) - min(inv['stock_price'] for inv in investments)) / average_price * 100):.2f}%
+"""
+            
+            if dividend_currency != invest_currency:
+                avg_rate = sum(inv['exchange_rate'] for inv in investments) / len(investments)
+                min_rate = min(inv['exchange_rate'] for inv in investments)
+                max_rate = max(inv['exchange_rate'] for inv in investments)
+                summary_report += f"""
+환율 정보:
+- 평균 환율: {avg_rate:.4f}
+- 최고 환율: {max_rate:.4f}
+- 최저 환율: {min_rate:.4f}
+- 환율 변동성: {((max_rate - min_rate) / avg_rate * 100):.2f}%
+"""
+            
+            st.download_button(
+                label="📄 요약 보고서 TXT 다운로드",
+                data=summary_report,
+                file_name=f"{dividend_stock}_to_{invest_stock}_summary_report_{start_date}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+        
+        # 성과 분석 섹션
+        st.subheader("📈 성과 분석")
+        
+        # 연간 수익률 계산 (근사치)
+        investment_period_days = (max(df_investments['date']) - min(df_investments['date'])).days
+        investment_period_years = investment_period_days / 365.25 if investment_period_days > 0 else 1
+        annualized_return = ((current_value / total_invested_amount) ** (1/investment_period_years) - 1) * 100 if investment_period_years > 0 else 0
+        
+        analysis_col1, analysis_col2 = st.columns(2)
+        
+        with analysis_col1:
+            st.info(f"""
+            **📊 수익률 분석**
+            - 총 수익률: {profit_loss_pct:+.2f}%
+            - 연환산 수익률: {annualized_return:+.2f}%
+            - 투자 기간: {investment_period_days}일 ({investment_period_years:.2f}년)
+            """)
+        
+        with analysis_col2:
+            # 위험 분석
+            price_volatility = (max(inv['stock_price'] for inv in investments) - min(inv['stock_price'] for inv in investments)) / average_price * 100
+            risk_level = "낮음" if price_volatility < 20 else "보통" if price_volatility < 50 else "높음"
+            
+            st.info(f"""
+            **⚠️ 위험 분석**
+            - 주가 변동성: {price_volatility:.2f}%
+            - 위험 수준: {risk_level}
+            - 최대 낙폭: {((min(inv['stock_price'] for inv in investments) - max(inv['stock_price'] for inv in investments)) / max(inv['stock_price'] for inv in investments) * 100):+.2f}%
+            """)
+        
+        # 투자 권장사항
+        st.subheader("💡 투자 권장사항")
+        
+        recommendations = []
+        
+        if profit_loss_pct > 10:
+            recommendations.append("✅ 우수한 성과를 보이고 있습니다. 현재 전략을 유지하는 것을 고려해보세요.")
+        elif profit_loss_pct > 0:
+            recommendations.append("📊 양호한 성과입니다. 장기적 관점에서 지속 관찰해보세요.")
+        else:
+            recommendations.append("⚠️ 현재 손실 상태입니다. 시장 상황을 재평가해보세요.")
+        
+        if price_volatility > 50:
+            recommendations.append("⚡ 높은 변동성을 보입니다. 리스크 관리에 주의하세요.")
+        
+        if len(investments) < 4:
+            recommendations.append("📅 투자 횟수가 적습니다. 더 긴 기간의 데이터로 재검토해보세요.")
+        
+        if dividend_currency != invest_currency:
+            recommendations.append("💱 환율 변동이 수익에 영향을 미칩니다. 환헤지 전략을 고려해보세요.")
+        
+        for rec in recommendations:
+            st.info(rec)
+        
+        # 캐시 정리 버튼
+        if st.button("🗑️ 캐시 정리", help="저장된 데이터를 삭제하고 새로운 데이터로 다시 조회합니다"):
+            st.session_state.cache.clear()
+            st.cache_data.clear()
+            st.success("캐시가 정리되었습니다. 페이지를 새로고침하세요.")
         
     except Exception as e:
         error_message = str(e)
