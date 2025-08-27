@@ -230,9 +230,9 @@ if run_simulation:
         
         # 탭으로 차트 분리
         if dividend_stock == invest_stock:
-            tab1, tab2, tab3 = st.tabs(["📈 누적 재투자량", "💰 배당금 추이", "📊 재투자 효과"])
+            tab1, tab2 = st.tabs(["📈 누적 재투자량", "📊 재투자 효과"])
         else:
-            tab1, tab2, tab3 = st.tabs(["📈 누적 주식 보유량", "💰 배당금 추이", "📊 주가 비교"])
+            tab1, tab2 = st.tabs(["📈 누적 주식 보유량", "📊 주가 비교"])
         
         with tab1:
             fig_cumulative = go.Figure()
@@ -252,21 +252,6 @@ if run_simulation:
             st.plotly_chart(fig_cumulative, use_container_width=True)
         
         with tab2:
-            fig_dividend = go.Figure()
-            fig_dividend.add_trace(go.Bar(
-                x=df_investments['date'],
-                y=df_investments['total_dividend'],
-                name='배당금',
-                marker_color='#2ca02c'
-            ))
-            fig_dividend.update_layout(
-                title=f"{dividend_stock} 배당금 추이",
-                xaxis_title="날짜",
-                yaxis_title="배당금 ($)",
-            )
-            st.plotly_chart(fig_dividend, use_container_width=True)
-        
-        with tab3:
             if dividend_stock == invest_stock:
                 # 같은 종목인 경우: 재투자 효과 차트
                 fig_reinvest = go.Figure()
