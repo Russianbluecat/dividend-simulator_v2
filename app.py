@@ -54,16 +54,14 @@ st.sidebar.markdown("""
 st.sidebar.markdown("---")
 st.sidebar.header("💱 통화 처리 정책")
 st.sidebar.markdown("""
-**결과 표기 기준:**  
-  투자 대상 주식 통화
+**결과 표기 기준:** 투자 대상 주식 통화
 
 🇺🇸 → 🇺🇸: USD 기준  
 🇰🇷 → 🇰🇷: KRW 기준  
 🇺🇸 → 🇰🇷: KRW 기준 (환전)  
 🇰🇷 → 🇺🇸: USD 기준 (환전)  
 
-*환율:  
-  배당일 기준 야후파이낸스*
+*환율: 배당일 기준 야후파이낸스*
 """)
 
 # 통화 및 환율 처리 함수들
@@ -183,7 +181,9 @@ if run_simulation:
         if dividend_stock == invest_stock:
             st.info(f"🔄 **동일 종목 재투자**: {dividend_stock} 배당금 → {dividend_stock} 재투자")
         else:
-            st.info(f"💰 **동일 통화 투자**: {dividend_symbol} 배당금 → {result_symbol} 투자")
+            # 동일 통화 투자 시 통화 명시적으로 표시
+            currency_name = "원화" if dividend_currency == "KRW" else "달러"
+            st.info(f"💰 **동일 통화 투자**: {dividend_symbol} {currency_name} 배당금 → {result_symbol} {currency_name} 투자")
     
     # 프로그레스 바
     progress_bar = st.progress(0)
