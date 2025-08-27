@@ -20,23 +20,61 @@ st.markdown("""
 특정 시점부터 배당주를 보유하고, 받은 배당금을 모두 다른 주식에 소수점 투자한 결과를 시뮬레이션합니다.
 """)
 
-# 사이드바 - 입력 파라미터
-st.sidebar.header("📊 투자 설정")
+# 사이드바에 예시와 가이드 추가
+st.sidebar.header("🎯 예시 결과")
+st.sidebar.markdown("""
+**JEPQ 1000주 → AMZN 투자 시뮬레이션 (2025.01.01~현재)**
+- 📊 총 7회 배당 수령 ($363 배당금)
+- 💎 AMZN 1.75주 보유 (평균단가 $207.20)
+- 📈 +10.01% 수익률 달성
+""")
 
-# 입력 폼
-with st.sidebar:
-    start_date = st.date_input(
-        "시작 날짜",
-        value=date(2025, 1, 1),
-        max_value=date.today()
-    )
-    
+st.sidebar.markdown("---")
+
+st.sidebar.header("📝 티커 입력 예시")
+st.sidebar.markdown("""
+**미국 주식/ETF:**
+- JEPQ, SCHD, AAPL, MSFT, AMZN
+
+**한국 주식:**
+- 005930.KS (삼성전자)
+- 000660.KS (SK하이닉스)
+
+**한국 ETF:**
+- 284430.KS (KODEX 200)
+- 132030.KS (KODEX 골드선물)
+""")
+
+# 메인 화면에 입력 파라미터
+st.subheader("📊 투자 설정")
+
+# 입력 폼을 2x2 그리드로 메인 화면에 배치
+col1, col2 = st.columns(2)
+
+with col1:
     dividend_stock = st.text_input(
         "배당주 티커",
         value="JEPQ",
         placeholder="예: JEPQ, SCHD, VYM"
     ).upper()
-    
+
+with col2:
+    invest_stock = st.text_input(
+        "투자 대상 주식 티커",
+        value="AMZN",
+        placeholder="예: AMZN, AAPL, MSFT"
+    ).upper()
+
+col3, col4 = st.columns(2)
+
+with col3:
+    start_date = st.date_input(
+        "시작 날짜",
+        value=date(2025, 1, 1),
+        max_value=date.today()
+    )
+
+with col4:
     shares_count = st.number_input(
         "보유 주식 수",
         min_value=1,
@@ -44,14 +82,12 @@ with st.sidebar:
         value=1000,
         step=100
     )
-    
-    invest_stock = st.text_input(
-        "투자 대상 주식 티커",
-        value="AMZN",
-        placeholder="예: AMZN, AAPL, MSFT"
-    ).upper()
-    
-    run_simulation = st.button("🚀 시뮬레이션 실행", type="primary")
+
+# 실행 버튼 - 중앙 배치
+st.markdown("---")
+col_button = st.columns([1, 2, 1])
+with col_button[1]:
+    run_simulation = st.button("🚀 시뮬레이션 실행", type="primary", use_container_width=True)
 
 # 메인 영역
 if run_simulation:
@@ -329,17 +365,8 @@ if run_simulation:
         status_text.empty()
 
 else:
-    # 초기 화면
-    st.info("👈 왼쪽 사이드바에서 투자 설정을 입력하고 시뮬레이션을 실행해보세요!")
-    
-    # 예시 결과 보여주기
-    st.subheader("🎯 예시 결과")
-    st.markdown("""
-    **JEPQ 1000주 → AMZN 투자 시뮬레이션 (2025.01.01~현재)**
-    - 📊 총 7회 배당 수령 ($363 배당금)
-    - 💎 AMZN 1.75주 보유 (평균단가 $207.20)
-    - 📈 +10.01% 수익률 달성
-    """)
+    # 초기 화면 - 간단한 안내 메시지만
+    st.info("💡 **Tip**: 위의 투자 설정을 입력하고 시뮬레이션을 실행해보세요! 왼쪽 사이드바에서 예시와 티커 입력 방법을 확인하실 수 있습니다.")
 
 # 푸터
 st.markdown("---")
