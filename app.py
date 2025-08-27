@@ -239,11 +239,9 @@ def create_sidebar():
 
     **한국주식:**
 
-    005930.KS, 000660.KS
+    005930.KS (삼성전자),  
+    000660.KS (하이닉스)
 
-    **한국 ETF:**
-
-    284430.KS, 132030.KS
     """)
 
 def display_results(results: Dict, investments: List[Dict], invest_stock: str, 
