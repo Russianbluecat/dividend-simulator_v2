@@ -182,41 +182,34 @@ def create_ui_components():
     # 입력 파라미터
     st.subheader("📊 투자 설정")
     
-    # 1x4 배열로 변경 (너비 비율: 2:2:1:1)
-    col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+    # 4행 1열 배열로 변경 (세로 배치)
+    dividend_stock = st.text_input(
+        "배당주 티커",
+        value=DEFAULT_DIVIDEND_STOCK,
+        placeholder="예: JEPQ, SCHD, VYM"
+    ).upper().strip()
     
-    with col1:
-        dividend_stock = st.text_input(
-            "배당주 티커",
-            value=DEFAULT_DIVIDEND_STOCK,
-            placeholder="예: JEPQ, SCHD, VYM"
-        ).upper().strip()
-        
-    with col2:
-        invest_stock = st.text_input(
-            "재투자 주식 티커",
-            value=DEFAULT_INVEST_STOCK,
-            placeholder="예: AMZN, AAPL, MSFT"
-        ).upper().strip()
+    invest_stock = st.text_input(
+        "재투자 주식 티커",
+        value=DEFAULT_INVEST_STOCK,
+        placeholder="예: AMZN, AAPL, MSFT"
+    ).upper().strip()
 
-    with col3:
-        start_date = st.date_input(
-            "시작 날짜",
-            value=DEFAULT_START_DATE,
-            max_value=date.today()
-        )
-        
-    with col4:
-        shares_count = st.number_input(
-            "보유 주식 수",
-            min_value=1,
-            max_value=1000000,
-            value=DEFAULT_SHARES,
-            step=100
-        )
+    start_date = st.date_input(
+        "시작 날짜",
+        value=DEFAULT_START_DATE,
+        max_value=date.today()
+    )
+    
+    shares_count = st.number_input(
+        "보유 주식 수",
+        min_value=1,
+        max_value=1000000,
+        value=DEFAULT_SHARES,
+        step=100
+    )
     
     return dividend_stock, invest_stock, start_date, shares_count
-
 # 상수에 UI 데이터 추가
 TICKER_EXAMPLES = {
     "미국주식/ETF": "<br> JEPQ, SCHD, AAPL, MSFT",
