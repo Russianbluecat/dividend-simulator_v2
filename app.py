@@ -177,13 +177,13 @@ def create_ui_components():
     배당주 보유 시 받은 배당금을 특정 주식에 재투자하는 시뮬레이션  
     (소숫점 단위 투자 포함)
     """)
-
     # 사이드바
     create_sidebar()
-
     # 입력 파라미터
     st.subheader("📊 투자 설정")
-    col1, col2 = st.columns(2)
+    
+    # 1x4 배열로 변경 (너비 비율: 2:2:1:1)
+    col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
     
     with col1:
         dividend_stock = st.text_input(
@@ -199,7 +199,6 @@ def create_ui_components():
             placeholder="예: AMZN, AAPL, MSFT"
         ).upper().strip()
 
-    col3, col4 = st.columns(2)
     with col3:
         start_date = st.date_input(
             "시작 날짜",
@@ -215,7 +214,7 @@ def create_ui_components():
             value=DEFAULT_SHARES,
             step=100
         )
-
+    
     return dividend_stock, invest_stock, start_date, shares_count
 
 # 상수에 UI 데이터 추가
