@@ -167,34 +167,82 @@ class DividendReinvestmentSimulator:
         except Exception as e:
             st.error(f"최종 결과 계산 실패: {str(e)}")
             return {}
+def validate_ticker(ticker_symbol: str) -> Tuple[bool, str]:
+    """티커 유효성 검증 함수"""
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        # 간단한 검증: 최근 1일 데이터 조회 시도
+        hist = ticker.history(period="1d")
+        if hist.empty:
+            return False, f"티커 '{ticker_symbol}'의 주가 데이터를 찾을 수 없습니다."
+        
+        info = ticker.info
+        if not info or info.get('regularMarketPrice') is None:
+            return False, f"티커 '{ticker_symbol}'의 상세 정보를 가져올 수 없습니다."
+            
+        return True, "유효한 티커입니다."
+    except Exception as e:
+        return False, f"티커 '{ticker_symbol}' 검증 실패: {str(e)}"
 
-def create_ui_components():
-    """UI 컴포넌트 생성"""
+
+def create_ticker_input_with_button_validation(label: str, default_value: str, placeholder: str, key: str):
+    """버튼 방식 티커 검증이 포함된 입력 필드"""
+    
+    col1, col2 = st.columns([3, 1])  # 입력칸 3, 버튼 1 비율
+    
+    with col1:
+        ticker = st.text_input(
+            label,
+            value=default_value,
+            placeholder=placeholder,
+            key=f"ticker_input_{key}"
+        ).upper().strip()
+    
+    with col2:
+        st.write("")  # 라벨과 높이 맞추기 위한 빈 공간
+        # 티커가 입력되었을 때만 버튼 활성화
+        if st.button("✓ 검증", key=f"validate_{key}", disabled=not ticker):
+            if ticker:
+                with st.spinner(f"{ticker} 검증 중..."):
+                    is_valid, message = validate_ticker(ticker)
+                    if is_valid:
+                        st.success(f"✅ {ticker}: 유효한 티커")
+                    else:
+                        st.error(f"❌ {ticker}: 검증 실패")
+                        st.caption(message)  # 상세 에러 메시지
+    
+    return ticker
+    
+def create_ui_components():  # 👈 기존 함수를 아래 내용으로 교체
+    """UI 컴포넌트 생성 (검증 버튼 포함)"""
     # 제목 및 설명
     st.title("💰 배당금 재투자 시뮬레이션")
     st.markdown("""
     **배당금을 모두 재투자했다면?**  
-    배당주 보유 시 받은 배당금을  
-    특정 주식에 재투자하는 시뮬레이션    
+    배당주 보유 시 받은 배당금을 특정 주식에 재투자하는 시뮬레이션  
     (소숫점 단위 투자 포함)
     """)
+    
     # 사이드바
     create_sidebar()
+    
     # 입력 파라미터
     st.subheader("📊 투자 설정")
     
-    # 4행 1열 배열로 변경 (세로 배치)
-    dividend_stock = st.text_input(
+    # 검증 버튼이 포함된 티커 입력
+    dividend_stock = create_ticker_input_with_button_validation(
         "배당주 티커",
-        value=DEFAULT_DIVIDEND_STOCK,
-        placeholder="예: JEPQ, SCHD, VYM"
-    ).upper().strip()
+        DEFAULT_DIVIDEND_STOCK,
+        "예: JEPQ, SCHD, VYM",
+        "dividend"
+    )
     
-    invest_stock = st.text_input(
+    invest_stock = create_ticker_input_with_button_validation(
         "재투자 주식 티커",
-        value=DEFAULT_INVEST_STOCK,
-        placeholder="예: AMZN, AAPL, MSFT"
-    ).upper().strip()
+        DEFAULT_INVEST_STOCK,
+        "예: AMZN, AAPL, MSFT",
+        "invest"
+    )
 
     start_date = st.date_input(
         "시작 날짜",
@@ -211,6 +259,8 @@ def create_ui_components():
     )
     
     return dividend_stock, invest_stock, start_date, shares_count
+
+
 # 상수에 UI 데이터 추가
 TICKER_EXAMPLES = {
     "미국주식/ETF": "<br> JEPQ, SCHD, AAPL, MSFT",
@@ -403,39 +453,57 @@ def display_investment_details(investments: List[Dict], dividend_currency: str,
         mime="text/csv"
     )
 
-def main():
-    """메인 함수"""
+def main():  # 👈 기존 main 함수를 아래 내용으로 교체
+    """개선된 메인 함수"""
     # UI 컴포넌트 생성
     dividend_stock, invest_stock, start_date, shares_count = create_ui_components()
 
     # 실행 버튼
     if st.button("🚀 시뮬레이션 실행", type="primary", use_container_width=True):
         
-        # 입력값 검증
+        # 1. 입력값 기본 검증
         if not dividend_stock or not invest_stock:
             st.error("❌ 배당주와 재투자 주식 티커를 모두 입력해주세요.")
             return
 
-        # 시뮬레이터 생성 및 실행
+        # 2. 시뮬레이션 실행 전 최종 티커 검증
+        with st.spinner("🔍 티커 유효성 최종 검증 중..."):
+            dividend_valid, dividend_msg = validate_ticker(dividend_stock)
+            invest_valid, invest_msg = validate_ticker(invest_stock)
+            
+            if not dividend_valid:
+                st.error(f"❌ 배당주 티커 오류: {dividend_msg}")
+                st.info("💡 올바른 배당주 티커 예시: JEPQ, SCHD, VYM")
+                return
+                
+            if not invest_valid:
+                st.error(f"❌ 재투자 주식 티커 오류: {invest_msg}")
+                st.info("💡 올바른 주식 티커 예시: AAPL, MSFT, AMZN")
+                return
+        
+        st.success("✅ 모든 티커 검증 완료!")
+        
+        # 3. 기존 시뮬레이션 로직 실행
         simulator = DividendReinvestmentSimulator(dividend_stock, invest_stock, start_date, shares_count)
         
         with st.spinner("📊 시뮬레이션 실행 중..."):
             try:
-                # 1. 주식 정보 가져오기
+                # 기존 시뮬레이션 로직과 동일...
                 dividend_ticker, dividend_currency = simulator.get_stock_info(dividend_stock)
                 invest_ticker, invest_currency = simulator.get_stock_info(invest_stock)
                 
                 if not dividend_ticker or not invest_ticker:
-                    st.error("❌ 유효하지 않은 티커입니다.")
+                    st.error("❌ 주식 정보를 가져올 수 없습니다.")
                     return
 
-                # 2. 배당 내역 가져오기
                 dividends = simulator.get_dividends(dividend_ticker)
                 if dividends.empty:
                     st.warning(f"⚠️ {start_date} 이후 {dividend_stock}의 배당 내역이 없습니다.")
+                    st.info("💡 더 이전 날짜부터 시뮬레이션을 시작해보세요.")
                     return
 
-                # 3. 투자 시뮬레이션 실행
+                st.info(f"📊 총 {len(dividends)}회의 배당 내역을 발견했습니다.")
+
                 investments = simulator.simulate_investments(
                     dividend_ticker, invest_ticker, dividend_currency, invest_currency, dividends
                 )
@@ -444,12 +512,10 @@ def main():
                     st.warning("⚠️ 시뮬레이션할 투자 내역이 없습니다.")
                     return
 
-                # 4. 최종 결과 계산
                 results = simulator.calculate_final_results(investments, invest_ticker)
                 if not results:
                     return
 
-                # 5. 결과 표시
                 st.success("🎉 시뮬레이션 완료!")
                 
                 if dividend_stock == invest_stock:
@@ -458,14 +524,22 @@ def main():
                 display_results(results, investments, invest_stock, invest_currency, dividend_currency)
 
             except Exception as e:
-                st.error(f"❌ 오류 발생: {str(e)}")
-                st.info("티커와 날짜를 확인하고 다시 시도해주세요.")
+                st.error(f"❌ 시뮬레이션 중 오류 발생: {str(e)}")
+                
+                # 구체적인 에러 가이드 제공
+                if "401" in str(e):
+                    st.info("💡 API 제한으로 인한 오류입니다. 잠시 후 다시 시도해주세요.")
+                elif "404" in str(e):
+                    st.info("💡 데이터를 찾을 수 없습니다. 티커와 날짜를 확인해주세요.")
+                else:
+                    st.info("💡 네트워크 연결을 확인하고 다시 시도해주세요.")
     
     else:
         st.info("💡 투자 설정을 입력하고 시뮬레이션을 실행해보세요!")
 
     st.markdown("---")
     st.markdown("💡 **Tip**: 다양한 배당주와 성장주 조합을 테스트해보세요!")
+
 
 if __name__ == "__main__":
     main()
