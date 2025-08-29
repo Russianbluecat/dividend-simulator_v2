@@ -289,7 +289,7 @@ def create_sidebar():
     """사이드바 생성"""
     st.sidebar.header("🎯 예시 결과")
     st.sidebar.markdown(f"""
-    **{EXAMPLE_RESULT['stock_combo']}**
+    **{EXAMPLE_RESULT['stock_combo']}**  
     ({EXAMPLE_RESULT['period']})
 
     - 📊 {EXAMPLE_RESULT['dividend_count']}  
