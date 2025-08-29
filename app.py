@@ -269,7 +269,7 @@ TICKER_EXAMPLES = {
 }
 
 EXAMPLE_RESULT = {
-    "stock_combo": "JEPQ 1000주 → AMZN 재투자",
+    "stock_combo": "JEPQ 1000주 → AMZN 재투자",  
     "period": "2025.01.01~08.27 기준",
     "dividend_count": "7회 배당 ($3,630)",
     "shares_owned": "AMZN 17.5주 보유",
