@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime, date
 import plotly.graph_objects as go
 from typing import Tuple, Optional, List, Dict
+import time
 
 # 상수 정의
 DEFAULT_DIVIDEND_STOCK = "JEPQ"
@@ -37,18 +38,43 @@ class DividendReinvestmentSimulator:
         self.start_date = start_date
         self.shares = shares
         
-    @st.cache_resource
-    def get_stock_info(_self, ticker_symbol: str) -> Tuple[Optional[yf.Ticker], Optional[str]]:
-        """주식 정보 및 통화 정보 가져오기"""
+    @st.cache_resource(ttl=3600)  # 1시간 캐싱
+    def get_stock_info(_self, ticker_symbol: str) -> Tuple[Optional[yf.Ticker], Optional[str], bool, str]:
+        """주식 정보 및 통화 정보 가져오기 (검증 포함)"""
         try:
             ticker = yf.Ticker(ticker_symbol)
-            # info 호출을 최소화하여 API 부하 줄임
-            info = ticker.info
-            currency = info.get('currency', 'USD')  # 기본값 USD로 설정
-            return ticker, currency
+            
+            # Rate limiting 방지를 위한 딜레이
+            time.sleep(0.1)
+            
+            # 먼저 간단한 히스토리 데이터로 유효성 검증
+            hist = ticker.history(period="2d", timeout=10)
+            if hist.empty:
+                return None, None, False, f"티커 '{ticker_symbol}'의 주가 데이터를 찾을 수 없습니다."
+            
+            # info 호출을 최소화
+            try:
+                info = ticker.info
+                currency = info.get('currency', 'USD')
+                
+                # 기본적인 유효성 확인
+                if not info or 'symbol' not in info:
+                    currency = 'USD'  # 기본값 사용
+                    
+            except Exception:
+                # info 호출 실패 시 기본값 사용
+                currency = 'USD'
+                
+            return ticker, currency, True, "유효한 티커입니다."
+            
         except Exception as e:
-            st.error(f"티커 {ticker_symbol} 정보를 가져오는데 실패했습니다: {str(e)}")
-            return None, None
+            error_msg = str(e).lower()
+            if "rate limit" in error_msg or "too many requests" in error_msg:
+                return None, None, False, f"API 요청 제한에 걸렸습니다. 잠시 후 다시 시도해주세요."
+            elif "timeout" in error_msg:
+                return None, None, False, f"요청 시간이 초과되었습니다. 네트워크 연결을 확인해주세요."
+            else:
+                return None, None, False, f"티커 '{ticker_symbol}' 검증 실패: {str(e)}"
 
     @st.cache_data(ttl=3600)
     def get_exchange_rate(_self, from_currency: str, to_currency: str, trade_date: datetime) -> float:
@@ -62,9 +88,11 @@ class DividendReinvestmentSimulator:
             return 1.0
 
         try:
+            time.sleep(0.1)  # Rate limiting 방지
             rate_data = yf.Ticker(rate_ticker).history(
                 start=trade_date.strftime('%Y-%m-%d'), 
-                period='5d'
+                period='5d',
+                timeout=10
             )
             if not rate_data.empty:
                 return float(rate_data['Close'].iloc[0])
@@ -76,6 +104,7 @@ class DividendReinvestmentSimulator:
     def get_dividends(self, ticker: yf.Ticker) -> pd.Series:
         """배당금 내역 가져오기"""
         try:
+            time.sleep(0.1)  # Rate limiting 방지
             dividends = ticker.dividends
             recent_dividends = dividends[dividends.index.date >= self.start_date]
             return recent_dividends
@@ -95,9 +124,11 @@ class DividendReinvestmentSimulator:
             
             # 투자 주식의 해당 날짜 주가 조회
             try:
+                time.sleep(0.1)  # Rate limiting 방지
                 invest_data = invest_ticker.history(
                     start=dividend_date.strftime('%Y-%m-%d'), 
-                    period='5d'
+                    period='5d',
+                    timeout=10
                 )
                 if invest_data.empty:
                     st.warning(f"⚠️ {dividend_date.strftime('%Y-%m-%d')} 주가 데이터 없음")
@@ -140,7 +171,8 @@ class DividendReinvestmentSimulator:
             return {}
             
         try:
-            current_price_data = invest_ticker.history(period='1d')
+            time.sleep(0.1)  # Rate limiting 방지
+            current_price_data = invest_ticker.history(period='1d', timeout=10)
             if current_price_data.empty:
                 raise ValueError("현재 주가 데이터를 가져올 수 없습니다")
                 
@@ -167,28 +199,11 @@ class DividendReinvestmentSimulator:
         except Exception as e:
             st.error(f"최종 결과 계산 실패: {str(e)}")
             return {}
-def validate_ticker(ticker_symbol: str) -> Tuple[bool, str]:
-    """티커 유효성 검증 함수"""
-    try:
-        ticker = yf.Ticker(ticker_symbol)
-        # 간단한 검증: 최근 1일 데이터 조회 시도
-        hist = ticker.history(period="1d")
-        if hist.empty:
-            return False, f"티커 '{ticker_symbol}'의 주가 데이터를 찾을 수 없습니다."
-        
-        info = ticker.info
-        if not info or info.get('regularMarketPrice') is None:
-            return False, f"티커 '{ticker_symbol}'의 상세 정보를 가져올 수 없습니다."
-            
-        return True, "유효한 티커입니다."
-    except Exception as e:
-        return False, f"티커 '{ticker_symbol}' 검증 실패: {str(e)}"
 
-
-def create_ticker_input_with_button_validation(label: str, default_value: str, placeholder: str, key: str):
-    """버튼 방식 티커 검증이 포함된 입력 필드"""
+def create_ticker_input_with_validation(label: str, default_value: str, placeholder: str, key: str):
+    """개선된 티커 검증이 포함된 입력 필드"""
     
-    col1, col2 = st.columns([3, 1])  # 입력칸 3, 버튼 1 비율
+    col1, col2 = st.columns([3, 1])
     
     with col1:
         ticker = st.text_input(
@@ -199,22 +214,42 @@ def create_ticker_input_with_button_validation(label: str, default_value: str, p
         ).upper().strip()
     
     with col2:
-        st.write("")  # 라벨과 높이 맞추기 위한 빈 공간
-        # 티커가 입력되었을 때만 버튼 활성화
-        if st.button("✓ 검증", key=f"validate_{key}", disabled=not ticker):
-            if ticker:
-                with st.spinner(f"{ticker} 검증 중..."):
-                    is_valid, message = validate_ticker(ticker)
-                    if is_valid:
-                        st.success(f"✅ {ticker}: 유효한 티커")
-                    else:
-                        st.error(f"❌ {ticker}: 검증 실패")
-                        st.caption(message)  # 상세 에러 메시지
+        st.write("")  # 라벨 높이 맞추기
+        validate_button = st.button("✓ 검증", key=f"validate_{key}", disabled=not ticker)
+    
+    # 검증 상태를 세션에 저장
+    validation_key = f"validation_{key}_{ticker}"
+    
+    if validate_button and ticker:
+        with st.spinner(f"{ticker} 검증 중..."):
+            # 시뮬레이터의 get_stock_info 메서드 사용 (캐싱 적용)
+            temp_simulator = DividendReinvestmentSimulator(ticker, ticker, date.today(), 1)
+            _, _, is_valid, message = temp_simulator.get_stock_info(ticker)
+            
+            # 검증 결과를 세션에 저장
+            st.session_state[validation_key] = {
+                'is_valid': is_valid,
+                'message': message,
+                'timestamp': time.time()
+            }
+    
+    # 저장된 검증 결과 표시 (5분간 유효)
+    if validation_key in st.session_state:
+        validation_data = st.session_state[validation_key]
+        if time.time() - validation_data['timestamp'] < 300:  # 5분
+            if validation_data['is_valid']:
+                st.success(f"✅ {ticker}: 유효한 티커")
+            else:
+                st.error(f"❌ {ticker}: 검증 실패")
+                st.caption(validation_data['message'])
+        else:
+            # 만료된 검증 결과 제거
+            del st.session_state[validation_key]
     
     return ticker
-    
-def create_ui_components():  # 👈 기존 함수를 아래 내용으로 교체
-    """UI 컴포넌트 생성 (검증 버튼 포함)"""
+
+def create_ui_components():
+    """UI 컴포넌트 생성 (개선된 검증 포함)"""
     # 제목 및 설명
     st.title("💰 배당금 재투자 시뮬레이션")
     st.markdown("""
@@ -229,15 +264,18 @@ def create_ui_components():  # 👈 기존 함수를 아래 내용으로 교체
     # 입력 파라미터
     st.subheader("📊 투자 설정")
     
-    # 검증 버튼이 포함된 티커 입력
-    dividend_stock = create_ticker_input_with_button_validation(
+    # API 제한 안내
+    st.info("💡 **API 제한 안내**: 티커 검증 시 잠시 기다리거나, 검증 없이 바로 시뮬레이션을 실행할 수 있습니다.")
+    
+    # 개선된 티커 입력
+    dividend_stock = create_ticker_input_with_validation(
         "배당주 티커",
         DEFAULT_DIVIDEND_STOCK,
         "예: JEPQ, SCHD, VYM",
         "dividend"
     )
     
-    invest_stock = create_ticker_input_with_button_validation(
+    invest_stock = create_ticker_input_with_validation(
         "재투자 주식 티커",
         DEFAULT_INVEST_STOCK,
         "예: AMZN, AAPL, MSFT",
@@ -260,12 +298,10 @@ def create_ui_components():  # 👈 기존 함수를 아래 내용으로 교체
     
     return dividend_stock, invest_stock, start_date, shares_count
 
-
 # 상수에 UI 데이터 추가
 TICKER_EXAMPLES = {
     "미국주식/ETF": "<br> JEPQ, SCHD, AAPL, MSFT",
     "한국주식": "<br> 005930.KS (삼성전자),<br>000660.KS (SK하이닉스)"
-    
 }
 
 EXAMPLE_RESULT = {
@@ -453,7 +489,7 @@ def display_investment_details(investments: List[Dict], dividend_currency: str,
         mime="text/csv"
     )
 
-def main():  # 👈 기존 main 함수를 아래 내용으로 교체
+def main():
     """개선된 메인 함수"""
     # UI 컴포넌트 생성
     dividend_stock, invest_stock, start_date, shares_count = create_ui_components()
@@ -461,40 +497,29 @@ def main():  # 👈 기존 main 함수를 아래 내용으로 교체
     # 실행 버튼
     if st.button("🚀 시뮬레이션 실행", type="primary", use_container_width=True):
         
-        # 1. 입력값 기본 검증
+        # 입력값 기본 검증
         if not dividend_stock or not invest_stock:
             st.error("❌ 배당주와 재투자 주식 티커를 모두 입력해주세요.")
             return
 
-        # 2. 시뮬레이션 실행 전 최종 티커 검증
-        with st.spinner("🔍 티커 유효성 최종 검증 중..."):
-            dividend_valid, dividend_msg = validate_ticker(dividend_stock)
-            invest_valid, invest_msg = validate_ticker(invest_stock)
-            
-            if not dividend_valid:
-                st.error(f"❌ 배당주 티커 오류: {dividend_msg}")
-                st.info("💡 올바른 배당주 티커 예시: JEPQ, SCHD, VYM")
-                return
-                
-            if not invest_valid:
-                st.error(f"❌ 재투자 주식 티커 오류: {invest_msg}")
-                st.info("💡 올바른 주식 티커 예시: AAPL, MSFT, AMZN")
-                return
-        
-        st.success("✅ 모든 티커 검증 완료!")
-        
-        # 3. 기존 시뮬레이션 로직 실행
+        # 시뮬레이션 실행
         simulator = DividendReinvestmentSimulator(dividend_stock, invest_stock, start_date, shares_count)
         
         with st.spinner("📊 시뮬레이션 실행 중..."):
             try:
-                # 기존 시뮬레이션 로직과 동일...
-                dividend_ticker, dividend_currency = simulator.get_stock_info(dividend_stock)
-                invest_ticker, invest_currency = simulator.get_stock_info(invest_stock)
+                # 주식 정보 가져오기 (캐싱된 메서드 사용)
+                dividend_ticker, dividend_currency, dividend_valid, dividend_msg = simulator.get_stock_info(dividend_stock)
+                invest_ticker, invest_currency, invest_valid, invest_msg = simulator.get_stock_info(invest_stock)
                 
-                if not dividend_ticker or not invest_ticker:
-                    st.error("❌ 주식 정보를 가져올 수 없습니다.")
+                if not dividend_valid:
+                    st.error(f"❌ 배당주 티커 오류: {dividend_msg}")
                     return
+                    
+                if not invest_valid:
+                    st.error(f"❌ 재투자 주식 티커 오류: {invest_msg}")
+                    return
+
+                st.success("✅ 티커 검증 완료!")
 
                 dividends = simulator.get_dividends(dividend_ticker)
                 if dividends.empty:
@@ -527,9 +552,12 @@ def main():  # 👈 기존 main 함수를 아래 내용으로 교체
                 st.error(f"❌ 시뮬레이션 중 오류 발생: {str(e)}")
                 
                 # 구체적인 에러 가이드 제공
-                if "401" in str(e):
-                    st.info("💡 API 제한으로 인한 오류입니다. 잠시 후 다시 시도해주세요.")
-                elif "404" in str(e):
+                error_str = str(e).lower()
+                if "rate limit" in error_str or "too many requests" in error_str:
+                    st.info("💡 API 요청 제한에 걸렸습니다. 5-10분 후 다시 시도하거나, 다른 티커로 테스트해보세요.")
+                elif "timeout" in error_str:
+                    st.info("💡 네트워크 연결이 느립니다. 잠시 후 다시 시도해주세요.")
+                elif "404" in error_str:
                     st.info("💡 데이터를 찾을 수 없습니다. 티커와 날짜를 확인해주세요.")
                 else:
                     st.info("💡 네트워크 연결을 확인하고 다시 시도해주세요.")
@@ -539,7 +567,6 @@ def main():  # 👈 기존 main 함수를 아래 내용으로 교체
 
     st.markdown("---")
     st.markdown("💡 **Tip**: 다양한 배당주와 성장주 조합을 테스트해보세요!")
-
 
 if __name__ == "__main__":
     main()
