@@ -1,11 +1,1 @@
-name: Keep Streamlit Awake
-on:
-  schedule:
-    - cron: "*/30 * * * *"   # 30분마다 실행
-  workflow_dispatch:         # 필요시 수동 실행도 가능
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Curl to Streamlit app
-        run: curl -s https://dividend-simulatorv2.streamlit.app/ > /dev/null
+
